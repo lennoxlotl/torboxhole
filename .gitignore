@@ -1,2 +1,9 @@
-.idea
-.venv
+/*
+
+!database
+!watchdog
+!main.py
+!config.py
+!.gitignore
+!README.md
+!Dockerfile
