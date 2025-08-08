@@ -29,6 +29,8 @@ def unzip_downloaded_files():
         session.close()
     pass
 
+CHUNK_SIZE = 64 * 1024
+
 def _extract_files(nzb_state: NzbState) -> bool:
     """
     Extracts all files of the downloaded Usenet ZIP archive into the output folder flattened.
@@ -52,9 +54,16 @@ def _extract_files(nzb_state: NzbState) -> bool:
             if not filename:
                 continue
 
-            target_path = os.path.join(target_path, filename)
-            with zip_ref.open(zip_info) as source, open(target_path, 'wb') as target:
-                target.write(source.read())
+            file_path = os.path.join(target_path, filename)
+            if os.path.exists(file_path):
+                continue
+
+            with zip_ref.open(zip_info) as source, open(file_path, 'wb') as target:
+                while True:
+                    chunk = source.read(CHUNK_SIZE)
+                    if not chunk:
+                        break
+                    target.write(chunk)
 
     archive_file.unlink()
     return True
