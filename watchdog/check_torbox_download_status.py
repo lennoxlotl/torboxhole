@@ -6,28 +6,24 @@ from config import config
 from database import Session
 from database.nzb import NzbDownloadState, NzbState
 from watchdog import TORBOX_API_VERSION, TORBOX_BASE_URL
+from watchdog.decorators import with_db_session
 
 
-def check_torbox_download_status():
-    session = Session()
+@with_db_session
+def check_torbox_download_status(session):
+    torbox_downloading = session.query(NzbState).filter(
+        NzbState.download_state == NzbDownloadState.TORBOX_DOWNLOADING).all()
+    for nzb_state in torbox_downloading:
+        if not _fetch_get_download_status(nzb_state):
+            continue
 
-    try:
-        torbox_downloading  = session.query(NzbState).filter(NzbState.download_state == NzbDownloadState.TORBOX_DOWNLOADING).all()
-        for nzb_state in torbox_downloading:
-            if not _fetch_get_download_status(nzb_state):
-                continue
+        logging.info(
+            f"Download of {nzb_state.hash} with download id {nzb_state.download_id} has finished, starting download from CDN")
+        nzb_state.download_state = NzbDownloadState.TORBOX_DOWNLOADED
 
-            logging.info(f"Download of {nzb_state.hash} with download id {nzb_state.download_id} has finished, starting download from CDN")
-            nzb_state.download_state = NzbDownloadState.TORBOX_DOWNLOADED
-
-        session.commit()
-    except:
-        session.rollback()
-        raise
-    finally:
-        session.close()
 
 GET_USENET_LIST_URL = "{}/{}/api/usenet/mylist"
+
 
 def _fetch_get_download_status(nzb_state: NzbState) -> bool:
     """

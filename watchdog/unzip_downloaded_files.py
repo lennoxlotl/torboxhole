@@ -4,32 +4,24 @@ import zipfile
 from pathlib import Path
 
 from config import config
-from database import Session
 from database.nzb import NzbState, NzbDownloadState
+from watchdog.decorators import with_db_session
 
 
-def unzip_downloaded_files():
-    session = Session()
+@with_db_session
+def unzip_downloaded_files(session):
+    torbox_downloading = session.query(NzbState).filter(NzbState.download_state == NzbDownloadState.DOWNLOADED).all()
+    for nzb_state in torbox_downloading:
+        logging.info(f"Extracting files in archive of {nzb_state.hash}")
+        if not _extract_files(nzb_state):
+            continue
 
-    try:
-        torbox_downloading = session.query(NzbState).filter(NzbState.download_state == NzbDownloadState.DOWNLOADED).all()
-        for nzb_state in torbox_downloading:
-            logging.info(f"Extracting files in archive of {nzb_state.hash}")
-            if not _extract_files(nzb_state):
-                continue
+        nzb_state.download_state = NzbDownloadState.COMPLETED
+        logging.info(f"Completed task of {nzb_state.hash}, media is ready to be used")
 
-            nzb_state.download_state = NzbDownloadState.COMPLETED
-            logging.info(f"Completed task of {nzb_state.hash}, media is ready to be used")
-
-        session.commit()
-    except:
-        session.rollback()
-        raise
-    finally:
-        session.close()
-    pass
 
 CHUNK_SIZE = 64 * 1024
+
 
 def _extract_files(nzb_state: NzbState) -> bool:
     """

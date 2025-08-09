@@ -1,5 +1,6 @@
 import logging
 import os.path
+import time
 from pathlib import Path
 
 import requests
@@ -8,30 +9,31 @@ from config import config
 from database import Session
 from database.nzb import NzbState, NzbDownloadState
 from watchdog import TORBOX_API_VERSION, TORBOX_BASE_URL
+from watchdog.decorators import with_db_session
 
 
-def start_queued_torbox_downloads():
-    session = Session()
+@with_db_session
+def start_queued_torbox_downloads(session):
+    torbox_downloading = session.query(NzbState).filter(
+        NzbState.download_state == NzbDownloadState.TORBOX_DOWNLOADED).all()
+    for nzb_state in torbox_downloading:
+        link = _get_torbox_cdn_link(nzb_state)
 
-    try:
-        torbox_downloading  = session.query(NzbState).filter(NzbState.download_state == NzbDownloadState.TORBOX_DOWNLOADED).all()
-        for nzb_state in torbox_downloading:
-            link = _get_torbox_cdn_link(nzb_state)
+        if link == "":
+            logging.error(f"Failed to get torbox CDN link for state {nzb_state.hash}, trying again later")
+            # Wait, in-case potential rate-limit occurred
+            time.sleep(2)
+            continue
 
-            logging.info(f"Starting/Resuming download of {nzb_state.hash} with download id {nzb_state.download_id}")
-            _start_download(nzb_state, link)
-            logging.info(f"Finished downloading {nzb_state.hash} with download id {nzb_state.download_id}")
+        logging.info(f"Starting/Resuming download of {nzb_state.hash} with download id {nzb_state.download_id}")
+        _start_download(nzb_state, link)
+        logging.info(f"Finished downloading {nzb_state.hash} with download id {nzb_state.download_id}")
 
-            nzb_state.download_state = NzbDownloadState.DOWNLOADED
+        nzb_state.download_state = NzbDownloadState.DOWNLOADED
 
-        session.commit()
-    except:
-        session.rollback()
-        raise
-    finally:
-        session.close()
 
 GET_USENET_DOWNLOAD_LINK = "{}/{}/api/usenet/requestdl"
+
 
 def _get_torbox_cdn_link(nzb_state: NzbState) -> str:
     """
@@ -54,6 +56,9 @@ def _get_torbox_cdn_link(nzb_state: NzbState) -> str:
         }
     )
 
+    if response.status_code != 200:
+        return ""
+
     json = response.json()
 
     # Query failed, try again next time
@@ -62,7 +67,9 @@ def _get_torbox_cdn_link(nzb_state: NzbState) -> str:
 
     return json["data"]
 
+
 CHUNK_SIZE = 1024 * 1024
+
 
 def _start_download(nzb_state: NzbState, link: str):
     part_file = Path(f"{config.incomplete_path}/{nzb_state.hash}.part")
