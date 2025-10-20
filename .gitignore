@@ -1,9 +1,5 @@
 /*
 
-!database
-!watchdog
-!main.py
-!config.py
+!src/
+!Cargo.toml
 !.gitignore
-!README.md
-!Dockerfile
