@@ -1,11 +1,12 @@
 use serde::Deserialize;
 
 pub mod user;
+pub mod usenet;
 mod request;
 
 /// Stores configuration for sending requests to the TorBox API.
 #[derive(Debug, Clone)]
-pub struct TorBoxConfig {
+pub struct TorBoxApiConfig {
     api_base: String,
     api_version: String,
     api_key: String,
@@ -19,7 +20,7 @@ pub struct GenericTorBoxJson<T> {
     data: Option<T>,
 }
 
-impl TorBoxConfig {
+impl TorBoxApiConfig {
     pub fn new(api_base: String, api_version: String, api_key: String) -> Self {
         Self {
             api_base,

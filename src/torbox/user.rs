@@ -1,5 +1,5 @@
 use crate::torbox::request::{tb_url, Request};
-use crate::torbox::TorBoxConfig;
+use crate::torbox::TorBoxApiConfig;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use serde_json::Value;
@@ -30,7 +30,7 @@ pub struct UserData {
 }
 
 /// Returns the user data belonging to the authenticated user (API key).
-pub async fn me(config: &TorBoxConfig, settings: bool) -> eyre::Result<UserData> {
+pub async fn me(config: &TorBoxApiConfig, settings: bool) -> eyre::Result<UserData> {
     Request::builder()
         .with_url(tb_url(config, format!("api/user/me?settings={}", settings)))
         .with_method(reqwest::Method::GET)
