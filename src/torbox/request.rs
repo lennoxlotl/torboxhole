@@ -1,16 +1,22 @@
 use crate::torbox::{GenericTorBoxJson, TorBoxApiConfig};
 use eyre::eyre;
+use log::debug;
 use reqwest::multipart::{Form, Part};
 use reqwest::{Body, Method, Response};
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::borrow::Cow;
+use std::fmt::Debug;
 use std::io;
 use std::ops::Deref;
 use std::path::Path;
 
 /// Wrapper for [`reqwest::Request`]s allowing easier access to the TorBox API.
-pub struct Request {
-    config: Config,
+pub struct Request<Q = ()>
+where
+    Q: Serialize + Default,
+{
+    config: Config<Q>,
 }
 
 /// Wrapper for [``reqwest::multipart::Form`]'s allowing easy request building with optional parameters.
@@ -18,34 +24,43 @@ pub struct OptionalForm {
     inner: Form,
 }
 
-pub struct RequestBuilder {
-    config: Config,
+pub struct RequestBuilder<Q = ()>
+where
+    Q: Serialize + Default,
+{
+    config: Config<Q>,
 }
 
 #[derive(Default)]
-struct Config {
+struct Config<Q = ()>
+where
+    Q: Serialize + Default,
+{
     url: String,
     method: Method,
     auth_key: String,
     body: Body,
     multipart: Form,
+    query: Q,
 }
 
-impl Request {
-    pub fn builder() -> RequestBuilder {
+impl<Q: Serialize + Default> Request<Q> {
+    pub fn builder() -> RequestBuilder<Q> {
         RequestBuilder {
             config: Config::default(),
         }
     }
 
     /// Sends the built request expecting a result defined as [`T`].
-    pub async fn send_parse<T: DeserializeOwned>(self) -> eyre::Result<T> {
+    pub async fn send_parse<T: DeserializeOwned + Debug>(self) -> eyre::Result<T> {
         let generic_response = self
             .inner_send()
             .await?
             .json::<GenericTorBoxJson<T>>()
             .await
             .map_err(|e| eyre::eyre!("failed to parse response: {}", e))?;
+
+        debug!("response: {:#?}", generic_response);
 
         // No data present if request is unsuccessful
         if !generic_response.success {
@@ -55,15 +70,18 @@ impl Request {
             ));
         }
 
-        generic_response.data.ok_or(eyre!("data = None"))
+        generic_response.data.ok_or_else(|| eyre!("data = None"))
     }
 
     /// Sends the built request without expecting result data.
     pub async fn send(self) -> eyre::Result<()> {
-        self.inner_send().await.map(|resp| {
-            println!("Response: {:?}", resp);
-            return ();
-        })
+        let resp = self.inner_send().await?;
+        debug!("response: {:#?}", resp);
+        debug!(
+            "response text: {:#?}",
+            resp.text().await.unwrap_or_default()
+        );
+        Ok(())
     }
 
     async fn inner_send(self) -> eyre::Result<Response> {
@@ -71,6 +89,7 @@ impl Request {
             .request(self.config.method, self.config.url)
             .bearer_auth(self.config.auth_key)
             .body(self.config.body)
+            .query(&self.config.query)
             .multipart(self.config.multipart)
             .send()
             .await
@@ -78,7 +97,7 @@ impl Request {
     }
 }
 
-impl RequestBuilder {
+impl<Q: Serialize + Default> RequestBuilder<Q> {
     pub fn with_url(mut self, url: String) -> Self {
         self.config.url = url;
         self
@@ -104,7 +123,12 @@ impl RequestBuilder {
         self
     }
 
-    pub fn build(self) -> Request {
+    pub fn with_query(mut self, query: Q) -> Self {
+        self.config.query = query;
+        self
+    }
+
+    pub fn build(self) -> Request<Q> {
         Request {
             config: self.config,
         }
@@ -164,7 +188,7 @@ impl Deref for OptionalForm {
 }
 
 /// Formats a URL using the torbox configuration and a path including query parameters.
-pub fn tb_url(config: &TorBoxApiConfig, path_incl_query: String) -> String {
+pub fn tb_url(config: &TorBoxApiConfig, path_incl_query: &str) -> String {
     format!(
         "{}/{}/{}",
         config.api_base, config.api_version, path_incl_query

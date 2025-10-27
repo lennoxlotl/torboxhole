@@ -1,7 +1,7 @@
-use crate::torbox::request::{tb_url, Request};
 use crate::torbox::TorBoxApiConfig;
+use crate::torbox::request::{Request, tb_url};
 use chrono::{DateTime, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -29,13 +29,23 @@ pub struct UserData {
     settings: HashMap<String, Value>,
 }
 
+#[derive(Serialize, Default, Debug)]
+struct UserQuery {
+    settings: bool,
+}
+
 /// Returns the user data belonging to the authenticated user (API key).
+///
+/// ### Arguments
+/// * `config` - TorBox API config
+/// * `settings` - Whether to include user account settings or not
 pub async fn me(config: &TorBoxApiConfig, settings: bool) -> eyre::Result<UserData> {
     Request::builder()
-        .with_url(tb_url(config, format!("api/user/me?settings={}", settings)))
+        .with_url(tb_url(config, "api/user/me"))
         .with_method(reqwest::Method::GET)
         .with_auth_key(config.api_key.to_owned())
+        .with_query(UserQuery { settings })
         .build()
-        .send_parse::<UserData>()
+        .send_parse()
         .await
 }

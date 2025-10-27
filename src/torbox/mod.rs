@@ -17,6 +17,7 @@ pub struct TorBoxApiConfig {
 pub struct GenericTorBoxJson<T> {
     success: bool,
     error: Option<String>,
+    detail: Option<String>,
     data: Option<T>,
 }
 
