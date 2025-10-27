@@ -1,5 +1,5 @@
 [package]
-name = "torbox"
+name = "tbh-torbox"
 description = "Simple TorBox SDK built for torboxhole"
 version = "0.1.0"
 edition = "2024"
