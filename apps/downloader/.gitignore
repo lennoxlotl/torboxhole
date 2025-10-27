@@ -3,3 +3,4 @@
 !src/
 !Cargo.toml
 !.gitignore
+!config.default.toml

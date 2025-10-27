@@ -1,0 +1,4 @@
+[torbox]
+api_key = ""
+api_base = "https://api.torbox.app"
+api_version = "v1"
