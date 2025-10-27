@@ -1,5 +1,5 @@
-use crate::torbox::TorBoxApiConfig;
-use crate::torbox::request::{Request, tb_url};
+use crate::TorBoxApiConfig;
+use crate::request::{Request, tb_url};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

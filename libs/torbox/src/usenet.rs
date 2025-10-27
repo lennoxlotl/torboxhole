@@ -1,5 +1,5 @@
-use crate::torbox::TorBoxApiConfig;
-use crate::torbox::request::{OptionalForm, Request, tb_url};
+use crate::TorBoxApiConfig;
+use crate::request::{OptionalForm, Request, tb_url};
 use chrono::{DateTime, Utc};
 use reqwest::Method;
 use serde::{Deserialize, Serialize};

@@ -1,6 +1,5 @@
 /*
 
-!apps/
-!libs/
+!src/
 !Cargo.toml
 !.gitignore

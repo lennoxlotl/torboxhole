@@ -1,4 +1,4 @@
-use crate::torbox::{GenericTorBoxJson, TorBoxApiConfig};
+use crate::{GenericTorBoxJson, TorBoxApiConfig};
 use eyre::eyre;
 use log::debug;
 use reqwest::multipart::{Form, Part};
@@ -12,19 +12,19 @@ use std::ops::Deref;
 use std::path::Path;
 
 /// Wrapper for [`reqwest::Request`]s allowing easier access to the TorBox API.
-pub struct Request<Q = ()>
+pub struct Request<Q>
 where
     Q: Serialize + Default,
 {
     config: Config<Q>,
 }
 
-/// Wrapper for [``reqwest::multipart::Form`]'s allowing easy request building with optional parameters.
+/// Wrapper for [`Form`]'s allowing easy request building with optional parameters.
 pub struct OptionalForm {
     inner: Form,
 }
 
-pub struct RequestBuilder<Q = ()>
+pub struct RequestBuilder<Q>
 where
     Q: Serialize + Default,
 {
@@ -32,7 +32,7 @@ where
 }
 
 #[derive(Default)]
-struct Config<Q = ()>
+struct Config<Q>
 where
     Q: Serialize + Default,
 {
@@ -142,6 +142,7 @@ impl OptionalForm {
         }
     }
 
+    /// See [`reqwest::multipart::Form::text`]
     pub fn text<T, U>(mut self, name: T, value: Option<U>) -> Self
     where
         T: Into<Cow<'static, str>>,
@@ -153,6 +154,7 @@ impl OptionalForm {
         self
     }
 
+    /// See [`reqwest::multipart::Form::file`]
     pub async fn file<T, U>(mut self, name: T, path: Option<U>) -> io::Result<Self>
     where
         T: Into<Cow<'static, str>>,
@@ -164,6 +166,7 @@ impl OptionalForm {
         Ok(self)
     }
 
+    /// See [`reqwest::multipart::Form::part`]
     pub fn part<T>(mut self, name: T, part: Option<Part>) -> Self
     where
         T: Into<Cow<'static, str>>,
