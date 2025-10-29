@@ -6,4 +6,5 @@ edition = "2024"
 authors = ["Lennox Schneider <admin@lennoxlotl.dev>"]
 
 [dependencies]
-rusqlite = "0.37.0"
+rusqlite = { version = "0.37.0", features = ["bundled-windows"] }
+eyre = "0.6.12"

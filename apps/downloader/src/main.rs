@@ -4,7 +4,7 @@ use log::info;
 use tbh_torbox::TorBoxApiState;
 
 mod config;
-mod tasks;
+mod processor;
 
 #[tokio::main]
 async fn main() {
@@ -14,11 +14,15 @@ async fn main() {
         include_str!("../config.default.toml").to_string(),
         true,
     )
-    .expect("Unable to load configuration");
+    .unwrap();
 
     check_torbox_validity(&config.torbox().into())
         .await
         .unwrap();
+
+    tbh_database::create_connection(config.database_path()).unwrap();
+
+    // TODO: app state
 }
 
 /// Checks TorBox API configuration by fetching the user profile.

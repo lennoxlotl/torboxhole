@@ -12,4 +12,5 @@ eyre = "0.6.12"
 
 tbh-torbox = { path = "../../libs/torbox" }
 tbh-config = { path = "../../libs/config" }
+tbh-database = { path = "../../libs/database" }
 log = "0.4.28"

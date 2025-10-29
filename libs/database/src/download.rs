@@ -1,3 +1,6 @@
+use eyre::eyre;
+use rusqlite::Connection;
+
 /// Download database model definition
 pub struct Download {
     /// Generated download ID
@@ -36,4 +39,25 @@ pub enum DownloadState {
     Extracting = 6,
     /// Files have been extracted and the download is complete
     Extracted = 7,
+}
+
+pub fn create_table(connection: &Connection) -> eyre::Result<()> {
+    connection
+        .execute(
+            r#"
+            CREATE TABLE IF NOT EXISTS downloads (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL,
+                nzb BLOB NOT NULL,
+                progress REAL NOT NULL,
+                download_id INTEGER NOT NULL,
+                retries INTEGER NOT NULL,
+                completed INTEGER NOT NULL,
+                state INTEGER NOT NULL
+            )
+        "#,
+            (),
+        )
+        .map(|_| ())
+        .map_err(|e| eyre!("Unable to create table: {}", e))
 }

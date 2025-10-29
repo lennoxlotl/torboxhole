@@ -4,6 +4,7 @@ use tbh_torbox::TorBoxApiState;
 #[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     torbox: TorBoxPart,
+    database_path: String,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -16,6 +17,10 @@ pub struct TorBoxPart {
 impl Config {
     pub fn torbox(&self) -> &TorBoxPart {
         &self.torbox
+    }
+    
+    pub fn database_path(&self) -> &str {
+        &self.database_path
     }
 }
 
@@ -33,6 +38,10 @@ impl TorBoxPart {
 
 impl Into<TorBoxApiState> for &TorBoxPart {
     fn into(self) -> TorBoxApiState {
-        TorBoxApiState::new(self.api_base.clone(), self.api_version.clone(), self.api_key.clone())
+        TorBoxApiState::new(
+            self.api_base.clone(),
+            self.api_version.clone(),
+            self.api_key.clone(),
+        )
     }
 }
