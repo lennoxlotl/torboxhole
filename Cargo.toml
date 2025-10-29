@@ -3,5 +3,7 @@ resolver = "3"
 members = [
     "apps/downloader",
     "libs/config",
+    "libs/database",
     "libs/torbox"
 ]
+

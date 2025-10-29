@@ -1,0 +1,9 @@
+[package]
+name = "tbh-database"
+description = "High-level access to database entities"
+version = "1.0.0"
+edition = "2024"
+authors = ["Lennox Schneider <admin@lennoxlotl.dev>"]
+
+[dependencies]
+rusqlite = "0.37.0"
