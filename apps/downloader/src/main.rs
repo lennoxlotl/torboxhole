@@ -1,19 +1,10 @@
-use serde::Deserialize;
-use tbh_torbox::TorBoxApiConfig;
+use crate::config::Config;
+use eyre::eyre;
+use log::info;
+use tbh_torbox::TorBoxApiState;
 
+mod config;
 mod tasks;
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct Config {
-    torbox: TorBoxPart,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-pub struct TorBoxPart {
-    api_key: String,
-    api_base: String,
-    api_version: String,
-}
 
 #[tokio::main]
 async fn main() {
@@ -24,13 +15,18 @@ async fn main() {
         true,
     )
     .expect("Unable to load configuration");
-    let torbox_config = TorBoxApiConfig::new(
-        config.torbox.api_base.to_owned(),
-        config.torbox.api_version.to_owned(),
-        config.torbox.api_key.to_owned(),
-    );
-    // Check if the provided API key is valid by doing a sample request to the user endpoint
-    tbh_torbox::user::me(&torbox_config, false)
+
+    check_torbox_validity(&config.torbox().into())
         .await
-        .expect("Invalid TorBox account, re-check your API key");
+        .unwrap();
+}
+
+/// Checks TorBox API configuration by fetching the user profile.
+async fn check_torbox_validity(config: &TorBoxApiState) -> eyre::Result<()> {
+    info!("Checking provided TorBox API details...");
+    tbh_torbox::user::me(&config, false)
+        .await
+        .map_err(|_| eyre!("Invalid TorBox API key provided, please check your configuration"))?;
+    info!("API details are valid");
+    Ok(())
 }

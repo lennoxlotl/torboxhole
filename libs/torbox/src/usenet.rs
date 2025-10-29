@@ -1,4 +1,4 @@
-use crate::TorBoxApiConfig;
+use crate::TorBoxApiState;
 use crate::request::{OptionalForm, Request, tb_url};
 use chrono::{DateTime, Utc};
 use reqwest::Method;
@@ -55,7 +55,7 @@ pub struct ListDataFile {
 /// active download slots, and they aren't too large.
 ///
 /// ### Arguments
-/// * `config` - TorBox API config
+/// * `state` - TorBox API state
 /// * `path` - Path to a .nzb file
 /// * `link` - Link to a .nzb file (raw)
 /// * `name` - The name you want the usenet download to be
@@ -64,7 +64,7 @@ pub struct ListDataFile {
 /// * `as_queued` - Tells TorBox you want this usenet download instantly queued.
 /// * `add_only_if_cached` - Only adds the download if it is cached on TorBox. If not cached, it won't be added.
 pub async fn create_download<P: AsRef<Path>>(
-    config: &TorBoxApiConfig,
+    state: &TorBoxApiState,
     path: Option<P>,
     link: Option<String>,
     name: Option<String>,
@@ -74,7 +74,7 @@ pub async fn create_download<P: AsRef<Path>>(
     add_only_if_cached: bool,
 ) -> eyre::Result<CreateDownloadData> {
     Request::<()>::builder()
-        .with_url(tb_url(config, "api/usenet/createusenetdownload"))
+        .with_url(&tb_url(state, "api/usenet/createusenetdownload"))
         .with_method(Method::POST)
         .with_multipart(
             OptionalForm::new()
@@ -88,15 +88,15 @@ pub async fn create_download<P: AsRef<Path>>(
                 .text("add_only_if_cached", Some(add_only_if_cached.to_string()))
                 .inner(),
         )
-        .with_auth_key(config.api_key.to_owned())
+        .with_auth_key(&state.api_key)
         .build()
         .send_parse()
         .await
 }
 
 #[derive(Serialize, Debug, Default, Clone)]
-struct RequestDlQuery {
-    token: String,
+struct RequestDlQuery<'a> {
+    token: &'a str,
     usenet_id: i32,
     file_id: Option<i32>,
     zip_link: bool,
@@ -109,23 +109,23 @@ struct RequestDlQuery {
 /// The 1-hour time limit is simply for starting downloads. This prevents long-term link sharing.
 ///
 /// ### Arguments
-/// * `config` - TorBox API config
+/// * `state` - TorBox API state
 /// * `usenet_id` - The usenet download's ID that you want to download
 /// * `file_id` - The files' ID that you want to download. Optional if using "zip_link"
 /// * `zip_link` - If you want a zip link. Required if no file_id. Takes precedence over file_id if both are given.
 /// * `user_ip` - The user's IPv4 to determine the closest CDN.
 pub async fn request_dl(
-    config: &TorBoxApiConfig,
+    state: &TorBoxApiState,
     usenet_id: i32,
     file_id: Option<i32>,
     zip_link: bool,
     user_ip: Option<String>,
 ) -> eyre::Result<String> {
     Request::builder()
-        .with_url(tb_url(config, "api/usenet/requestdl"))
+        .with_url(&tb_url(state, "api/usenet/requestdl"))
         .with_method(Method::GET)
         .with_query(RequestDlQuery {
-            token: config.api_key.to_string(),
+            token: &state.api_key,
             usenet_id,
             file_id,
             zip_link,
@@ -149,19 +149,19 @@ const MY_LIST_URL: &'static str = "api/usenet/mylist";
 /// See [``list_all`] for overview.
 ///
 /// ### Arguments
-/// * `config` - TorBox API config
+/// * `state` - TorBox API state
 /// * `bypass_cache` - Allows you to bypass the cached data, and always get fresh information.
 /// * `id` - Determines the usenet download requested.
-pub async fn list(config: &TorBoxApiConfig, bypass_cache: bool, id: i32) -> eyre::Result<ListData> {
+pub async fn list(state: &TorBoxApiState, bypass_cache: bool, id: i32) -> eyre::Result<ListData> {
     Request::builder()
-        .with_url(tb_url(config, MY_LIST_URL))
+        .with_url(&tb_url(state, MY_LIST_URL))
         .with_method(Method::GET)
         .with_query(ListQuery {
             bypass_cache,
             id: Some(id),
             ..Default::default()
         })
-        .with_auth_key(config.api_key.to_owned())
+        .with_auth_key(&state.api_key)
         .build()
         .send_parse()
         .await
@@ -172,18 +172,18 @@ pub async fn list(config: &TorBoxApiConfig, bypass_cache: bool, id: i32) -> eyre
 /// live usenet downloads.
 ///
 /// ### Arguments
-/// * `config` - TorBox API config
+/// * `state` - TorBox API state
 /// * `bypass_cache` - Allows you to bypass the cached data, and always get fresh information.
 /// * `offset` - Determines the offset of items to get from the database. Default is 0.
 /// * `limit` - Determines the number of items to receive per request. Default is 1000.
 pub async fn list_all(
-    config: &TorBoxApiConfig,
+    state: &TorBoxApiState,
     bypass_cache: bool,
     offset: i32,
     limit: i32,
 ) -> eyre::Result<Vec<ListData>> {
     Request::builder()
-        .with_url(tb_url(config, MY_LIST_URL))
+        .with_url(&tb_url(state, MY_LIST_URL))
         .with_method(Method::GET)
         .with_query(ListQuery {
             bypass_cache,
@@ -191,7 +191,7 @@ pub async fn list_all(
             offset,
             limit,
         })
-        .with_auth_key(config.api_key.to_owned())
+        .with_auth_key(&state.api_key)
         .build()
         .send_parse()
         .await

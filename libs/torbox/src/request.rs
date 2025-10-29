@@ -1,4 +1,4 @@
-use crate::{GenericTorBoxJson, TorBoxApiConfig};
+use crate::{GenericTorBoxJson, TorBoxApiState};
 use eyre::eyre;
 use log::debug;
 use reqwest::multipart::{Form, Part};
@@ -12,11 +12,11 @@ use std::ops::Deref;
 use std::path::Path;
 
 /// Wrapper for [`reqwest::Request`]s allowing easier access to the TorBox API.
-pub struct Request<Q>
+pub struct Request<'a, Q>
 where
     Q: Serialize + Default,
 {
-    config: Config<Q>,
+    config: Config<'a, Q>,
 }
 
 /// Wrapper for [`Form`]'s allowing easy request building with optional parameters.
@@ -24,28 +24,28 @@ pub struct OptionalForm {
     inner: Form,
 }
 
-pub struct RequestBuilder<Q>
+pub struct RequestBuilder<'a, Q>
 where
     Q: Serialize + Default,
 {
-    config: Config<Q>,
+    config: Config<'a, Q>,
 }
 
 #[derive(Default)]
-struct Config<Q>
+struct Config<'a, Q>
 where
     Q: Serialize + Default,
 {
-    url: String,
+    url: &'a str,
     method: Method,
-    auth_key: String,
+    auth_key: &'a str,
     body: Body,
     multipart: Form,
     query: Q,
 }
 
-impl<Q: Serialize + Default> Request<Q> {
-    pub fn builder() -> RequestBuilder<Q> {
+impl<'a, Q: Serialize + Default> Request<'a, Q> {
+    pub fn builder() -> RequestBuilder<'a, Q> {
         RequestBuilder {
             config: Config::default(),
         }
@@ -97,8 +97,8 @@ impl<Q: Serialize + Default> Request<Q> {
     }
 }
 
-impl<Q: Serialize + Default> RequestBuilder<Q> {
-    pub fn with_url(mut self, url: String) -> Self {
+impl<'a, Q: Serialize + Default> RequestBuilder<'a, Q> {
+    pub fn with_url(mut self, url: &'a str) -> Self {
         self.config.url = url;
         self
     }
@@ -108,7 +108,7 @@ impl<Q: Serialize + Default> RequestBuilder<Q> {
         self
     }
 
-    pub fn with_auth_key(mut self, auth_key: String) -> Self {
+    pub fn with_auth_key(mut self, auth_key: &'a str) -> Self {
         self.config.auth_key = auth_key;
         self
     }
@@ -128,7 +128,7 @@ impl<Q: Serialize + Default> RequestBuilder<Q> {
         self
     }
 
-    pub fn build(self) -> Request<Q> {
+    pub fn build(self) -> Request<'a, Q> {
         Request {
             config: self.config,
         }
@@ -191,7 +191,7 @@ impl Deref for OptionalForm {
 }
 
 /// Formats a URL using the torbox configuration and a path including query parameters.
-pub fn tb_url(config: &TorBoxApiConfig, path_incl_query: &str) -> String {
+pub fn tb_url(config: &TorBoxApiState, path_incl_query: &str) -> String {
     format!(
         "{}/{}/{}",
         config.api_base, config.api_version, path_incl_query

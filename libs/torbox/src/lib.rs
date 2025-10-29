@@ -6,7 +6,7 @@ mod request;
 
 /// Stores configuration for sending requests to the TorBox API.
 #[derive(Debug, Clone)]
-pub struct TorBoxApiConfig {
+pub struct TorBoxApiState {
     api_base: String,
     api_version: String,
     api_key: String,
@@ -20,7 +20,7 @@ pub struct GenericTorBoxJson<T> {
     data: Option<T>,
 }
 
-impl TorBoxApiConfig {
+impl TorBoxApiState {
     pub fn new(api_base: String, api_version: String, api_key: String) -> Self {
         Self {
             api_base,
