@@ -1,8 +1,10 @@
-use r2d2::Pool;
+use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
 use std::path::Path;
 
 pub mod download;
+
+pub type PooledSqliteConn = PooledConnection<SqliteConnectionManager>;
 
 /// Creates a new SQLite database connection, creates all default tables on
 ///

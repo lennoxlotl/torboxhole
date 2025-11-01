@@ -1,6 +1,5 @@
+use crate::PooledSqliteConn;
 use eyre::eyre;
-use r2d2::PooledConnection;
-use r2d2_sqlite::SqliteConnectionManager;
 
 /// Download database model definition
 pub struct Download {
@@ -42,7 +41,8 @@ pub enum DownloadState {
     Extracted = 7,
 }
 
-pub fn create_table(connection: &PooledConnection<SqliteConnectionManager>) -> eyre::Result<()> {
+/// Creates the table for [`Download`] entities.
+pub fn create_table(connection: &PooledSqliteConn) -> eyre::Result<()> {
     connection
         .execute(
             r#"
@@ -63,8 +63,15 @@ pub fn create_table(connection: &PooledConnection<SqliteConnectionManager>) -> e
         .map_err(|e| eyre!("Unable to create table: {}", e))
 }
 
+/// Creates a new download row in the database.
+/// Values not represented in arguments will be set to default values.
+///
+/// ### Arguments
+/// * `connection` - Sqlite Connection
+/// * `name` - Name of download (usually name of .nzb file)
+/// * `nzb` - Content of .nzb file
 pub fn create_download(
-    connection: &PooledConnection<SqliteConnectionManager>,
+    connection: &PooledSqliteConn,
     name: String,
     nzb: String,
 ) -> eyre::Result<()> {
