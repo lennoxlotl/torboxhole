@@ -9,8 +9,13 @@ tokio = { version = "1.48.0", features = ["full"] }
 pretty_env_logger = "0.5.0"
 serde = { version = "1.0.228", features = ["derive"] }
 eyre = "0.6.12"
+rusqlite = "0.37.0"
+log = "0.4.28"
+tokio-cron-scheduler = { version = "0.15.1", features = ["signal"] }
+tokio-stream = { version = "0.1.17", features = ["fs"] }
+r2d2 = "0.8.10"
+r2d2_sqlite = "0.31.0"
 
 tbh-torbox = { path = "../../libs/torbox" }
 tbh-config = { path = "../../libs/config" }
 tbh-database = { path = "../../libs/database" }
-log = "0.4.28"

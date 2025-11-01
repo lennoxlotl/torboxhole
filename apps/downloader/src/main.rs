@@ -1,28 +1,56 @@
 use crate::config::Config;
 use eyre::eyre;
 use log::info;
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
 use tbh_torbox::TorBoxApiState;
+use tokio_cron_scheduler::{Job, JobScheduler};
 
 mod config;
 mod processor;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> eyre::Result<()> {
     pretty_env_logger::init();
+
     let config: Config = tbh_config::load_config_at(
         "config.toml",
         include_str!("../config.default.toml").to_string(),
         true,
-    )
-    .unwrap();
+    )?;
+    let database = tbh_database::create_connection(config.database_path())?;
 
-    check_torbox_validity(&config.torbox().into())
-        .await
-        .unwrap();
+    check_torbox_validity(&config.torbox().into()).await?;
+    run_jobs(config, database).await
+}
 
-    tbh_database::create_connection(config.database_path()).unwrap();
-
-    // TODO: app state
+/// Runs all processor jobs until the process is (un)gracefully terminated.
+async fn run_jobs(
+    config: Config,
+    database: Pool<SqliteConnectionManager>,
+) -> eyre::Result<()> {
+    let mut scheduler = JobScheduler::new().await?;
+    scheduler
+        .add(
+            // Runs all processor jobs every 10 seconds
+            Job::new_async("1/10 * * * * *", move |_, _| {
+                let config_clone = config.clone();
+                let database_clone = database.clone();
+                Box::pin(async move {
+                    processor::ingest::ingest(
+                        config_clone.directories().ingest().to_string(),
+                        database_clone,
+                    )
+                    .await;
+                })
+            })?,
+        )
+        .await?;
+    scheduler.start().await?;
+    tokio::signal::ctrl_c().await?;
+    info!("Shutting down...");
+    scheduler.shutdown().await?;
+    Ok(())
 }
 
 /// Checks TorBox API configuration by fetching the user profile.

@@ -1,5 +1,6 @@
 use eyre::eyre;
-use rusqlite::Connection;
+use r2d2::PooledConnection;
+use r2d2_sqlite::SqliteConnectionManager;
 
 /// Download database model definition
 pub struct Download {
@@ -41,7 +42,7 @@ pub enum DownloadState {
     Extracted = 7,
 }
 
-pub fn create_table(connection: &Connection) -> eyre::Result<()> {
+pub fn create_table(connection: &PooledConnection<SqliteConnectionManager>) -> eyre::Result<()> {
     connection
         .execute(
             r#"
@@ -60,4 +61,21 @@ pub fn create_table(connection: &Connection) -> eyre::Result<()> {
         )
         .map(|_| ())
         .map_err(|e| eyre!("Unable to create table: {}", e))
+}
+
+pub fn create_download(
+    connection: &PooledConnection<SqliteConnectionManager>,
+    name: String,
+    nzb: String,
+) -> eyre::Result<()> {
+    connection
+        .execute(
+            r#"
+                INSERT INTO downloads (name, nzb, progress, download_id, retries, completed, state)
+                VALUES (?1, ?2, 0, 0, 0, 0, 0)
+            "#,
+            (&name, &nzb),
+        )
+        .map(|_| ())
+        .map_err(|e| eyre!("Unable to insert download row: {}", e))
 }

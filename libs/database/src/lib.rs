@@ -1,19 +1,19 @@
-use eyre::eyre;
-use rusqlite::Connection;
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
 use std::path::Path;
 
-mod download;
+pub mod download;
 
 /// Creates a new SQLite database connection, creates all default tables on
 ///
 /// ### Arguments
 /// * `path` - Path to database file
-pub fn create_connection<P>(path: P) -> eyre::Result<Connection>
+pub fn create_connection<P>(path: P) -> eyre::Result<Pool<SqliteConnectionManager>>
 where
     P: AsRef<Path>,
 {
-    let connection =
-        Connection::open("database.db").map_err(|e| eyre!("Unable to open database: {}", e))?;
-    download::create_table(&connection)?;
-    Ok(connection)
+    let connection_manager = SqliteConnectionManager::file(path);
+    let pool = Pool::new(connection_manager)?;
+    download::create_table(&pool.get()?)?;
+    Ok(pool)
 }
