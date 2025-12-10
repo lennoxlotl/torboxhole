@@ -3,6 +3,7 @@ use serde::Deserialize;
 pub mod user;
 pub mod usenet;
 mod request;
+pub mod download_limit;
 
 /// Stores configuration for sending requests to the TorBox API.
 #[derive(Debug, Clone)]

@@ -58,9 +58,13 @@ async fn run_jobs(config: Config, database: Pool<SqliteConnectionManager>) -> ey
 /// Checks TorBox API configuration by fetching the user profile.
 async fn check_torbox_validity(config: &TorBoxApiState) -> eyre::Result<()> {
     info!("Checking provided TorBox API details...");
-    tbh_torbox::user::me(&config, false)
+    let data = tbh_torbox::user::me(&config, false)
         .await
         .map_err(|_| eyre!("Invalid TorBox API key provided, please check your configuration"))?;
     info!("API details are valid");
+    info!(
+        "Account has {} available download slots",
+        tbh_torbox::download_limit::resolve_download_limit(&data)
+    );
     Ok(())
 }
