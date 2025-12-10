@@ -25,10 +25,7 @@ async fn main() -> eyre::Result<()> {
 }
 
 /// Runs all processor jobs until the process is (un)gracefully terminated.
-async fn run_jobs(
-    config: Config,
-    database: Pool<SqliteConnectionManager>,
-) -> eyre::Result<()> {
+async fn run_jobs(config: Config, database: Pool<SqliteConnectionManager>) -> eyre::Result<()> {
     let mut scheduler = JobScheduler::new().await?;
     scheduler
         .add(
@@ -37,9 +34,14 @@ async fn run_jobs(
                 let config_clone = config.clone();
                 let database_clone = database.clone();
                 Box::pin(async move {
-                    processor::ingest::ingest(
+                    processor::ingest::process_ingest(
                         config_clone.directories().ingest().to_string(),
-                        database_clone,
+                        database_clone.clone(),
+                    )
+                    .await;
+                    processor::queue::process_queue(
+                        &config_clone.torbox().into(),
+                        database_clone.clone(),
                     )
                     .await;
                 })

@@ -1,27 +1,33 @@
-use crate::PooledSqliteConn;
+use crate::{FromRow, PooledSqliteConn};
 use eyre::eyre;
+use num_derive::{FromPrimitive, ToPrimitive};
+use num_traits::{FromPrimitive, ToPrimitive};
+use rusqlite::Row;
+use rusqlite::fallible_iterator::FallibleIterator;
 
 /// Download database model definition
+#[derive(Debug, Clone)]
 pub struct Download {
     /// Generated download ID
-    id: i64,
+    pub id: i64,
     /// Original .nzb file name for manual investigation
-    name: String,
+    pub name: String,
     /// Content of .nzb file to be downloaded
-    nzb: String,
+    pub nzb: String,
     /// Progress of download on torbox
-    progress: f32,
+    pub progress: f32,
     /// Torbox download ID
-    download_id: i64,
+    pub download_id: i64,
     /// Amount of times the download has been retried (resets on state change)
-    retries: i64,
+    pub retries: i64,
     /// If true, the download has either been completed successfully or failed (state shows status)
-    completed: bool,
+    pub completed: bool,
     /// State of the download
-    state: DownloadState,
+    pub state: DownloadState,
 }
 
 /// Defines the state of a download
+#[derive(Debug, Clone, FromPrimitive, ToPrimitive)]
 pub enum DownloadState {
     /// Download is queued
     Queued = 0,
@@ -39,6 +45,21 @@ pub enum DownloadState {
     Extracting = 6,
     /// Files have been extracted and the download is complete
     Extracted = 7,
+}
+
+impl FromRow for Download {
+    fn from_row(row: &Row) -> rusqlite::Result<Self> {
+        Ok(Download {
+            id: row.get(0)?,
+            name: row.get(1)?,
+            nzb: row.get(2)?,
+            progress: row.get(3)?,
+            download_id: row.get(4)?,
+            retries: row.get(5)?,
+            completed: row.get::<usize, i32>(6)? == 1,
+            state: DownloadState::from_i64(row.get(7)?).unwrap(),
+        })
+    }
 }
 
 /// Creates the table for [`Download`] entities.
@@ -85,4 +106,70 @@ pub fn create_download(
         )
         .map(|_| ())
         .map_err(|e| eyre!("Unable to insert download row: {}", e))
+}
+
+/// Returns all downloads in a given state.
+///
+/// ### Arguments
+/// * `connection` - Sqlite connection
+/// * `state` - Requested download state
+pub fn find_downloads_with_state(
+    connection: &PooledSqliteConn,
+    state: DownloadState,
+) -> eyre::Result<Vec<Download>> {
+    Ok(connection
+        .prepare(
+            r#"
+            SELECT id, name, nzb, progress, download_id, retries, completed, state
+            FROM downloads
+            WHERE state = ?1
+        "#,
+        )?
+        .query([state.to_i32().unwrap()])?
+        .map(|row| Download::from_row(row))
+        .collect()?)
+}
+
+/// Updates the state of a download row.
+///
+/// ### Arguments
+/// * `connection` - Sqlite connection
+/// * `id` - Internal ID of the download
+/// * `state` - New download state
+pub fn set_download_state(
+    connection: &PooledSqliteConn,
+    id: i64,
+    state: DownloadState,
+) -> eyre::Result<()> {
+    connection
+        .execute(
+            r#"
+            UPDATE downloads WHERE id = ?1 SET state = ?2
+            "#,
+            (id, state.to_i32().unwrap_or_default()),
+        )
+        .map(|_| ())
+        .map_err(|e| eyre!("Unable to update download state: {}", e))
+}
+
+/// Updates the torbox download id.
+///
+/// ### Arguments
+/// * `connection` - Sqlite connection
+/// * `id` - Internal ID of the download
+/// * `download_id` - New torbox download id
+pub fn set_download_id(
+    connection: &PooledSqliteConn,
+    id: i64,
+    download_id: i64,
+) -> eyre::Result<()> {
+    connection
+        .execute(
+            r#"
+            UPDATE downloads WHERE id = ?1 SET download_id = ?2
+            "#,
+            (id, download_id),
+        )
+        .map(|_| ())
+        .map_err(|e| eyre!("Unable to update download id: {}", e))
 }

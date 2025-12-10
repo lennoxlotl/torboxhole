@@ -6,6 +6,10 @@ pub mod download;
 
 pub type PooledSqliteConn = PooledConnection<SqliteConnectionManager>;
 
+pub trait FromRow: Sized {
+    fn from_row(row: &rusqlite::Row) -> rusqlite::Result<Self>;
+}
+
 /// Creates a new SQLite database connection, creates all default tables on
 ///
 /// ### Arguments

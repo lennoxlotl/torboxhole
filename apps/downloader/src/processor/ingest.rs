@@ -7,7 +7,7 @@ use tokio_stream::wrappers::ReadDirStream;
 const FALLBACK_FILE_NAME: &str = "Unknown file name";
 
 /// Handles creation of database rows for all available .nzb files in the ingest directory.
-pub async fn ingest(ingest_path: String, pool: Pool<SqliteConnectionManager>) {
+pub async fn process_ingest(ingest_path: String, pool: Pool<SqliteConnectionManager>) {
     let files = match find_nzb_files(ingest_path).await {
         Ok(files) => files,
         Err(err) => {

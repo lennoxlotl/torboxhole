@@ -8,9 +8,9 @@ use std::path::Path;
 /// Data returned by `api/usenet/createusenetdownload`
 #[derive(Deserialize, Debug, Clone)]
 pub struct CreateDownloadData {
-    hash: String,
-    usenetdownload_id: i32,
-    auth_id: String,
+    pub hash: String,
+    pub usenetdownload_id: i32,
+    pub auth_id: String,
 }
 
 /// Data returned by `api/usenet/mylist`
@@ -18,36 +18,36 @@ pub struct CreateDownloadData {
 /// Reference: https://www.postman.com/wamy-dev/torbox/example/29572726-9d09c4a0-a0b2-41d9-aff7-76ca43d09e7c
 #[derive(Deserialize, Debug, Clone)]
 pub struct ListData {
-    id: i32,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
-    auth_id: String,
-    name: String,
-    hash: String,
-    download_state: String,
-    download_speed: i32,
-    original_url: Option<String>,
-    eta: i32,
-    progress: i32,
-    size: i32,
-    download_id: String,
-    files: Vec<ListDataFile>,
+    pub id: i32,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub auth_id: String,
+    pub name: String,
+    pub hash: String,
+    pub download_state: String,
+    pub download_speed: i32,
+    pub original_url: Option<String>,
+    pub eta: i32,
+    pub progress: i32,
+    pub size: i32,
+    pub download_id: String,
+    pub files: Vec<ListDataFile>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct ListDataFile {
-    id: i32,
-    md5: Option<String>,
-    hash: String,
-    name: String,
-    size: i32,
-    zipped: bool,
-    s3_path: String,
-    infected: bool,
-    mimetype: String,
-    short_name: String,
-    absolute_path: String,
-    opensubtitles_hash: Option<String>,
+    pub id: i32,
+    pub md5: Option<String>,
+    pub hash: String,
+    pub name: String,
+    pub size: i32,
+    pub zipped: bool,
+    pub s3_path: String,
+    pub infected: bool,
+    pub mimetype: String,
+    pub short_name: String,
+    pub absolute_path: String,
+    pub opensubtitles_hash: Option<String>,
 }
 
 /// Creates a usenet download under your account. Send **either** a link or an nzb file.
