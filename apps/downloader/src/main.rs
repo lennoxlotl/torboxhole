@@ -3,6 +3,8 @@ use eyre::eyre;
 use log::info;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
+use std::cmp::max;
+use tbh_torbox::user::UserData;
 use tbh_torbox::TorBoxApiState;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
@@ -20,12 +22,12 @@ async fn main() -> eyre::Result<()> {
     )?;
     let database = tbh_database::create_connection(config.database_path())?;
 
-    check_torbox_validity(&config.torbox().into()).await?;
-    run_jobs(config, database).await
+    let data = check_torbox_validity(&config.torbox().into()).await?;
+    run_jobs(tbh_torbox::download_limit::resolve_download_limit(&data), config, database).await
 }
 
 /// Runs all processor jobs until the process is (un)gracefully terminated.
-async fn run_jobs(config: Config, database: Pool<SqliteConnectionManager>) -> eyre::Result<()> {
+async fn run_jobs(max_downloads: i32, config: Config, database: Pool<SqliteConnectionManager>) -> eyre::Result<()> {
     let mut scheduler = JobScheduler::new().await?;
     scheduler
         .add(
@@ -42,8 +44,13 @@ async fn run_jobs(config: Config, database: Pool<SqliteConnectionManager>) -> ey
                     processor::queue::process_queue(
                         &config_clone.torbox().into(),
                         database_clone.clone(),
+                        max_downloads,
                     )
                     .await;
+                    processor::check_ready::process_ready_check(
+                        &config_clone.torbox().into(),
+                        database_clone.clone(),
+                    ).await;
                 })
             })?,
         )
@@ -56,7 +63,7 @@ async fn run_jobs(config: Config, database: Pool<SqliteConnectionManager>) -> ey
 }
 
 /// Checks TorBox API configuration by fetching the user profile.
-async fn check_torbox_validity(config: &TorBoxApiState) -> eyre::Result<()> {
+async fn check_torbox_validity(config: &TorBoxApiState) -> eyre::Result<UserData> {
     info!("Checking provided TorBox API details...");
     let data = tbh_torbox::user::me(&config, false)
         .await
@@ -66,5 +73,5 @@ async fn check_torbox_validity(config: &TorBoxApiState) -> eyre::Result<()> {
         "Account has {} available download slots",
         tbh_torbox::download_limit::resolve_download_limit(&data)
     );
-    Ok(())
+    Ok(data)
 }

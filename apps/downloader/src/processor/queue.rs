@@ -1,13 +1,14 @@
+use log::{debug, info};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use std::path::PathBuf;
-use tbh_database::download::{Download, DownloadState, find_downloads_with_state};
+use tbh_database::download::{count_downloads_with_state, find_downloads_with_state, Download, DownloadState};
 use tbh_torbox::TorBoxApiState;
 
 /// Handles queued downloads until they can be grabbed from torbox.
 /// This includes both queueing the downloads and waiting for their completion on the torbox side.
-pub async fn process_queue(torbox_api_state: &TorBoxApiState, pool: Pool<SqliteConnectionManager>) {
-    match start_queued_downloads(torbox_api_state, pool.clone()).await {
+pub async fn process_queue(torbox_api_state: &TorBoxApiState, pool: Pool<SqliteConnectionManager>, max_downloads: i32) {
+    match start_queued_downloads(torbox_api_state, pool.clone(), max_downloads).await {
         Ok(_) => {}
         Err(err) => {
             log::error!("FATAL: Unable to start queued downloads: {}", err);
@@ -18,23 +19,32 @@ pub async fn process_queue(torbox_api_state: &TorBoxApiState, pool: Pool<SqliteC
 async fn start_queued_downloads(
     tor_box_api_state: &TorBoxApiState,
     pool: Pool<SqliteConnectionManager>,
+    max_downloads: i32,
 ) -> eyre::Result<()> {
     let connection = pool.get()?;
+
+    // We have no real way of reliably getting this from the TorBox API, this is rather an assumption
+    // than being accurate
+    let active_downloads = count_downloads_with_state(&connection, DownloadState::Grabbing)?;
+    debug!("Currently active downloads: {} (limit: {})", active_downloads, max_downloads);
+    if active_downloads >= max_downloads as usize {
+        info!("Reached account download limit ({}), will not queue any further downloads", max_downloads);
+        return Ok(());
+    }
+
     for download in find_downloads_with_state(&connection, DownloadState::Queued)? {
         let temp_path = create_temp_nzb_file(&download).await?;
         let tb_download = tbh_torbox::usenet::create_download(
             &tor_box_api_state,
             Some(&temp_path),
             None,
-            // TODO: Change API to take borrowed string instead
             Some(download.name.to_owned()),
             None,
-            -1,
-            true,
+            2,
+            false,
             false,
         )
         .await?;
-
 
         tbh_database::download::set_download_state(
             &connection,
@@ -48,7 +58,7 @@ async fn start_queued_downloads(
         )?;
 
         tokio::fs::remove_file(&temp_path).await?;
-        log::info!("Queued download {} on TorBox", &download.name);
+        info!("Queued download {} on TorBox", &download.name);
     }
     Ok(())
 }

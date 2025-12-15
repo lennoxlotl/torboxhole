@@ -32,6 +32,13 @@ pub struct ListData {
     pub size: i32,
     pub download_id: String,
     pub files: Vec<ListDataFile>,
+    pub active: bool,
+    pub cached: bool,
+    pub download_present: bool,
+    pub download_finished: bool,
+    pub expires_at: Option<DateTime<Utc>>,
+    pub server: Option<i32>,
+    pub cached_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Deserialize, Debug, Clone)]

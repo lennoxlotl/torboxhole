@@ -12,9 +12,10 @@ use std::ops::Deref;
 use std::path::Path;
 
 /// Wrapper for [`reqwest::Request`]s allowing easier access to the TorBox API.
+#[derive(Debug)]
 pub struct Request<'a, Q>
 where
-    Q: Serialize + Default,
+    Q: Serialize + Default + Debug,
 {
     config: Config<'a, Q>,
 }
@@ -26,12 +27,12 @@ pub struct OptionalForm {
 
 pub struct RequestBuilder<'a, Q>
 where
-    Q: Serialize + Default,
+    Q: Serialize + Default + Debug,
 {
     config: Config<'a, Q>,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct Config<'a, Q>
 where
     Q: Serialize + Default,
@@ -44,7 +45,7 @@ where
     query: Q,
 }
 
-impl<'a, Q: Serialize + Default> Request<'a, Q> {
+impl<'a, Q: Serialize + Default + Debug> Request<'a, Q> {
     pub fn builder() -> RequestBuilder<'a, Q> {
         RequestBuilder {
             config: Config::default(),
@@ -53,6 +54,8 @@ impl<'a, Q: Serialize + Default> Request<'a, Q> {
 
     /// Sends the built request expecting a result defined as [`T`].
     pub async fn send_parse<T: DeserializeOwned + Debug>(self) -> eyre::Result<T> {
+        debug!("request: {:#?}", self);
+
         let generic_response = self
             .inner_send()
             .await?
@@ -60,7 +63,7 @@ impl<'a, Q: Serialize + Default> Request<'a, Q> {
             .await
             .map_err(|e| eyre::eyre!("failed to parse response: {}", e))?;
 
-        debug!("response: {:#?}", generic_response);
+        debug!("response data: {:#?}", generic_response);
 
         // No data present if request is unsuccessful
         if !generic_response.success {
@@ -97,7 +100,7 @@ impl<'a, Q: Serialize + Default> Request<'a, Q> {
     }
 }
 
-impl<'a, Q: Serialize + Default> RequestBuilder<'a, Q> {
+impl<'a, Q: Serialize + Default + Debug> RequestBuilder<'a, Q> {
     pub fn with_url(mut self, url: &'a str) -> Self {
         self.config.url = url;
         self

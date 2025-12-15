@@ -1,5 +1,5 @@
 use crate::{FromRow, PooledSqliteConn};
-use eyre::eyre;
+use eyre::{eyre, OptionExt};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive, ToPrimitive};
 use rusqlite::Row;
@@ -76,7 +76,7 @@ pub fn create_table(connection: &PooledSqliteConn) -> eyre::Result<()> {
                 retries INTEGER NOT NULL,
                 completed INTEGER NOT NULL,
                 state INTEGER NOT NULL
-            )
+            );
         "#,
             (),
         )
@@ -100,7 +100,7 @@ pub fn create_download(
         .execute(
             r#"
                 INSERT INTO downloads (name, nzb, progress, download_id, retries, completed, state)
-                VALUES (?1, ?2, 0, 0, 0, 0, 0)
+                VALUES (?1, ?2, 0, 0, 0, 0, 0);
             "#,
             (&name, &nzb),
         )
@@ -122,12 +122,31 @@ pub fn find_downloads_with_state(
             r#"
             SELECT id, name, nzb, progress, download_id, retries, completed, state
             FROM downloads
-            WHERE state = ?1
+            WHERE state = ?1;
         "#,
         )?
         .query([state.to_i32().unwrap()])?
         .map(|row| Download::from_row(row))
         .collect()?)
+}
+
+/// Counts all downloads in a given state (returns number of downloads in state).
+///
+/// ### Arguments
+/// * `connection` - Sqlite connection
+/// * `state` - Requested download state
+pub fn count_downloads_with_state(
+    connection: &PooledSqliteConn,
+    state: DownloadState,
+) -> eyre::Result<usize> {
+    connection
+        .prepare(
+            r#"
+            SELECT COUNT(*) FROM downloads WHERE state = ?1;
+            "#
+        )?
+        .query_one([&state.to_i32().unwrap()], |row| row.get::<usize, usize>(0))
+        .map_err(|e| eyre!("Unable to count downloads: {}", e))
 }
 
 /// Updates the state of a download row.
@@ -144,7 +163,7 @@ pub fn set_download_state(
     connection
         .execute(
             r#"
-            UPDATE downloads WHERE id = ?1 SET state = ?2
+            UPDATE downloads SET state = ?2 WHERE id = ?1;
             "#,
             (id, state.to_i32().unwrap_or_default()),
         )
@@ -166,7 +185,7 @@ pub fn set_download_id(
     connection
         .execute(
             r#"
-            UPDATE downloads WHERE id = ?1 SET download_id = ?2
+            UPDATE downloads SET download_id = ?2 WHERE id = ?1;
             "#,
             (id, download_id),
         )
