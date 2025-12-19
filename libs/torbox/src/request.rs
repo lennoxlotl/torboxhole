@@ -56,12 +56,17 @@ impl<'a, Q: Serialize + Default + Debug> Request<'a, Q> {
     pub async fn send_parse<T: DeserializeOwned + Debug>(self) -> eyre::Result<T> {
         debug!("request: {:#?}", self);
 
-        let generic_response = self
+        let response = self
             .inner_send()
-            .await?
+            .await?;
+        debug!("response: {:#?}", response);
+        let generic_response = response
             .json::<GenericTorBoxJson<T>>()
             .await
-            .map_err(|e| eyre::eyre!("failed to parse response: {}", e))?;
+            .map_err(|e| {
+                debug!("Failed to deserialize generic response: {:#?}", e);
+                eyre::eyre!("failed to parse response: {}", e)
+            })?;
 
         debug!("response data: {:#?}", generic_response);
 

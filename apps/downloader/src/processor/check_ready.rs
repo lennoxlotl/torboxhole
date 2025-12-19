@@ -1,4 +1,4 @@
-use log::{error, info};
+use log::{debug, error, info};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use tbh_database::download::{find_downloads_with_state, set_download_id, set_download_state, DownloadState};
