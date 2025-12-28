@@ -1,5 +1,5 @@
 use crate::{FromRow, PooledSqliteConn};
-use eyre::{eyre, OptionExt};
+use eyre::{OptionExt, eyre};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::{FromPrimitive, ToPrimitive};
 use rusqlite::Row;
@@ -143,7 +143,7 @@ pub fn count_downloads_with_state(
         .prepare(
             r#"
             SELECT COUNT(*) FROM downloads WHERE state = ?1;
-            "#
+            "#,
         )?
         .query_one([&state.to_i32().unwrap()], |row| row.get::<usize, usize>(0))
         .map_err(|e| eyre!("Unable to count downloads: {}", e))
@@ -163,7 +163,7 @@ pub fn set_download_state(
     connection
         .execute(
             r#"
-            UPDATE downloads SET state = ?2 WHERE id = ?1;
+            UPDATE downloads SET retries = 0, state = ?2 WHERE id = ?1;
             "#,
             (id, state.to_i32().unwrap_or_default()),
         )
@@ -191,4 +191,21 @@ pub fn set_download_id(
         )
         .map(|_| ())
         .map_err(|e| eyre!("Unable to update download id: {}", e))
+}
+
+/// Increments the retries of a download.
+///
+/// ### Arguments
+/// * `connection` - Sqlite connection
+/// * `id` - Internal ID of the download
+pub fn increment_download_retries(connection: &PooledSqliteConn, id: i64) -> eyre::Result<()> {
+    connection
+        .execute(
+            r#"
+            UPDATE downloads SET retries = retries + 1 WHERE id = ?1;
+            "#,
+            [id],
+        )
+        .map(|_| ())
+        .map_err(|e| eyre!("Unable to increment download retries: {}", e))
 }

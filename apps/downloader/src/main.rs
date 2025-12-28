@@ -3,7 +3,6 @@ use eyre::eyre;
 use log::info;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use std::cmp::max;
 use tbh_torbox::user::UserData;
 use tbh_torbox::TorBoxApiState;
 use tokio_cron_scheduler::{Job, JobScheduler};

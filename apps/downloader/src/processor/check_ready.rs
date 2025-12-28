@@ -1,7 +1,7 @@
-use log::{debug, error, info};
+use log::{error, info};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use tbh_database::download::{find_downloads_with_state, set_download_id, set_download_state, DownloadState};
+use tbh_database::download::{find_downloads_with_state, increment_download_retries, set_download_id, set_download_state, DownloadState};
 use tbh_torbox::TorBoxApiState;
 use tbh_torbox::usenet::list;
 
@@ -30,7 +30,15 @@ async fn check_downloads(
             continue;
         }
 
-        // TODO: Check for other download states (dead downloads etc.)
+        // Allow 1000 seconds (~16 minutes) of downloading / processing, other states get 5 minutes until cancellation
+        let in_progress = download_state.download_state == "downloading" || download_state.download_state == "processing";
+        let max_retries = if in_progress { 100 } else { 30 };
+        if download.retries > max_retries {
+            set_download_state(&connection, download.id, DownloadState::Failed)?;
+            error!("Download {} exceeded maximum time limit, evicting download", &download.name);
+            continue;
+        }
+        increment_download_retries(&connection, max_retries)?;
     }
     Ok(())
 }
