@@ -20,8 +20,8 @@ pub struct Download {
     pub download_id: i64,
     /// Amount of times the download has been retried (resets on state change)
     pub retries: i64,
-    /// If true, the download has either been completed successfully or failed (state shows status)
-    pub completed: bool,
+    /// If true, the download is currently locked due to file operations in other threads
+    pub lock: bool,
     /// State of the download
     pub state: DownloadState,
 }
@@ -56,7 +56,7 @@ impl FromRow for Download {
             progress: row.get(3)?,
             download_id: row.get(4)?,
             retries: row.get(5)?,
-            completed: row.get::<usize, i32>(6)? == 1,
+            lock: row.get::<usize, i32>(6)? == 1,
             state: DownloadState::from_i64(row.get(7)?).unwrap(),
         })
     }
@@ -74,7 +74,7 @@ pub fn create_table(connection: &PooledSqliteConn) -> eyre::Result<()> {
                 progress REAL NOT NULL,
                 download_id INTEGER NOT NULL,
                 retries INTEGER NOT NULL,
-                completed INTEGER NOT NULL,
+                lock INTEGER NOT NULL,
                 state INTEGER NOT NULL
             );
         "#,
@@ -208,4 +208,38 @@ pub fn increment_download_retries(connection: &PooledSqliteConn, id: i64) -> eyr
         )
         .map(|_| ())
         .map_err(|e| eyre!("Unable to increment download retries: {}", e))
+}
+
+/// Sets the lock of a download.
+///
+/// ### Arguments
+/// * `connection` - Sqlite connection
+/// * `id` - Internal ID of the download
+/// * `lock` - New lock state
+pub fn set_download_lock(connection: &PooledSqliteConn, id: i64, lock: bool) -> eyre::Result<()> {
+    connection
+        .execute(
+            r#"
+            UPDATE downloads SET lock = ?2 WHERE id = ?1;
+            "#,
+            (id, if lock { 1 } else { 0 }),
+        )
+        .map(|_| ())
+        .map_err(|e| eyre!("Unable to update download id: {}", e))
+}
+
+/// Resets the locks of all downloads (used on application restart).
+/// 
+/// ### Arguments
+/// * `connection` - Sqlite connection
+pub fn reset_locks(connection: &PooledSqliteConn) -> eyre::Result<()> {
+    connection
+        .execute(
+            r#"
+            UPDATE downloads SET lock = 0;
+            "#,
+            [],
+        )
+        .map(|_| ())
+        .map_err(|e| eyre!("Unable to reset download lock: {}", e))
 }

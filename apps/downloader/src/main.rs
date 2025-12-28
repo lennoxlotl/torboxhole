@@ -6,6 +6,7 @@ use r2d2_sqlite::SqliteConnectionManager;
 use tbh_torbox::user::UserData;
 use tbh_torbox::TorBoxApiState;
 use tokio_cron_scheduler::{Job, JobScheduler};
+use tbh_database::download::reset_locks;
 
 mod config;
 mod processor;
@@ -20,9 +21,17 @@ async fn main() -> eyre::Result<()> {
         true,
     )?;
     let database = tbh_database::create_connection(config.database_path())?;
+    reset_download_locks(&database)?;
 
     let data = check_torbox_validity(&config.torbox().into()).await?;
     run_jobs(tbh_torbox::download_limit::resolve_download_limit(&data), config, database).await
+}
+
+/// Resets all download locks (done on file operations)
+fn reset_download_locks(database: &Pool<SqliteConnectionManager>) -> eyre::Result<()> {
+    let connection = database.get()?;
+    reset_locks(&connection)?;
+    Ok(())
 }
 
 /// Runs all processor jobs until the process is (un)gracefully terminated.
