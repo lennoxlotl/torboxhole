@@ -120,7 +120,7 @@ pub fn find_downloads_with_state(
     Ok(connection
         .prepare(
             r#"
-            SELECT id, name, nzb, progress, download_id, retries, completed, state
+            SELECT *
             FROM downloads
             WHERE state = ?1;
         "#,
