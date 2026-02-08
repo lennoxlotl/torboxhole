@@ -99,7 +99,7 @@ pub fn create_download(
     connection
         .execute(
             r#"
-                INSERT INTO downloads (name, nzb, progress, download_id, retries, completed, state)
+                INSERT INTO downloads (name, nzb, progress, download_id, retries, lock, state)
                 VALUES (?1, ?2, 0, 0, 0, 0, 0);
             "#,
             (&name, &nzb),
@@ -163,7 +163,7 @@ pub fn set_download_state(
     connection
         .execute(
             r#"
-            UPDATE downloads SET retries = 0, state = ?2 WHERE id = ?1;
+            UPDATE downloads SET state = ?2 WHERE id = ?1;
             "#,
             (id, state.to_i32().unwrap_or_default()),
         )
@@ -198,13 +198,13 @@ pub fn set_download_id(
 /// ### Arguments
 /// * `connection` - Sqlite connection
 /// * `id` - Internal ID of the download
-pub fn increment_download_retries(connection: &PooledSqliteConn, id: i64) -> eyre::Result<()> {
+pub fn set_download_retries(connection: &PooledSqliteConn, id: i64, retries: i64) -> eyre::Result<()> {
     connection
         .execute(
             r#"
-            UPDATE downloads SET retries = retries + 1 WHERE id = ?1;
+            UPDATE downloads SET retries = ?2 WHERE id = ?1;
             "#,
-            [id],
+            (id, retries),
         )
         .map(|_| ())
         .map_err(|e| eyre!("Unable to increment download retries: {}", e))

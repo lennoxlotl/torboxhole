@@ -24,10 +24,11 @@ pub async fn process_ingest(ingest_path: String, pool: Pool<SqliteConnectionMana
                     file.to_str().unwrap_or("Unknown file path")
                 );
             }
-            Err(_) => {
+            Err(e) => {
                 log::error!(
-                    "FATAL: Unable to create database entry for file: {}",
-                    file.to_str().unwrap_or("Unknown file path")
+                    "FATAL: Unable to create database entry for file: {} ({})",
+                    file.to_str().unwrap_or("Unknown file path"),
+                    e
                 );
                 return;
             }

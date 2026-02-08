@@ -19,3 +19,7 @@ r2d2_sqlite = "0.31.0"
 tbh-torbox = { path = "../../libs/torbox" }
 tbh-config = { path = "../../libs/config" }
 tbh-database = { path = "../../libs/database" }
+reqwest = { version = "0.13.2", features = ["json", "stream", "multipart"] }
+zip = "7.4.0"
+futures-util = "0.3.31"
+sanitize-filename = "0.6.0"

@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use crate::config::Config;
 use eyre::eyre;
 use log::info;
@@ -58,6 +59,16 @@ async fn run_jobs(max_downloads: i32, config: Config, database: Pool<SqliteConne
                     processor::check_ready::process_ready_check(
                         &config_clone.torbox().into(),
                         database_clone.clone(),
+                    ).await;
+                    processor::download::process_download(
+                        &config_clone.torbox().into(),
+                        database_clone.clone(),
+                        &PathBuf::from(config_clone.directories().download())
+                    ).await;
+                    processor::extract::process_extract(
+                        database_clone.clone(),
+                        &PathBuf::from(config_clone.directories().download()),
+                        &PathBuf::from(config_clone.directories().output())
                     ).await;
                 })
             })?,
